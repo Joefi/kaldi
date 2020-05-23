@@ -30,6 +30,7 @@
 #include "lat/kaldi-lattice.h"
 #include "fstext/deterministic-fst.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 namespace chain {
@@ -53,13 +54,20 @@ struct SupervisionOptions {
   BaseFloat weight;
   BaseFloat lm_scale;
   bool convert_to_pdfs;
+  BaseFloat phone_ins_penalty;
+  int32 left_tolerance_silence;
+  int32 right_tolerance_silence;
+  std::string silence_phones_str;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
                         frame_subsampling_factor(1),
                         weight(1.0),
                         lm_scale(0.0),
-                        convert_to_pdfs(true) { }
+                        convert_to_pdfs(true),
+                        phone_ins_penalty(0.0),
+                        left_tolerance_silence(0),
+                        right_tolerance_silence(0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -80,6 +88,14 @@ struct SupervisionOptions {
                    "supervision fst.");
     opts->Register("convert-to-pdfs", &convert_to_pdfs, "If true, convert "
                    "transition-ids to pdf-ids + 1 in supervision FSTs.");
+    opts->Register("phone-ins-penalty", &phone_ins_penalty,
+        "The penalty to penalize longer paths");
+    opts->Register("left-tolerance-silence", &left_tolerance_silence, "Left tolerance for "
+        "shift in silence phone position relative to the alignment");
+    opts->Register("right-tolerance-silence", &right_tolerance_silence, "Right tolerance for "
+        "shift in silence phone position relative to the alignment");
+    opts->Register("silence-phones", &silence_phones_str,
+        "A comma separated list of silence phones");
   }
   void Check() const;
 };
@@ -286,10 +302,14 @@ struct Supervision {
   // it will only be present for un-merged egs.
   std::vector<int32> alignment_pdfs;
 
+  GeneralMatrix numerator_post_targets;
+
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
                  label_dim(-1) { }
 
   Supervision(const Supervision &other);
+
+  Supervision(int32 dim, const Posterior& labels);
 
   void Swap(Supervision *other);
 
@@ -380,6 +400,27 @@ class SupervisionSplitter {
   // (note that supervision_.fst is topologically sorted).
   std::vector<int32> frame_;
 };
+
+/// This function adds weights to the FST in the supervision object, by
+/// composing with the 'normalization fst'.  It should be called directly after
+/// GetFrameRange().  The 'normalization fst' is produced by the function
+/// DenominatorGraph::GetNormalizationFst(); it's a slight modification of the
+/// 'denominator fst'.  This function modifies the weights in the supervision
+/// object- adding to each path, the weight that it gets in the normalization
+/// fst, which is the same weight that it will get in the denominator
+/// forward-backward computation.  This ensures that the (log) objective
+/// function can never be positive (as the numerator graph will be a strict
+/// subset of the denominator, with the same weights for the same paths).  This
+/// function returns true on success, and false on the (hopefully) rare occasion
+/// that the composition of the normalization fst with the supervision produced
+/// an empty result (this shouldn't happen unless there were alignment errors in
+/// the alignments used to train the phone language model leading to unseen
+/// 3-grams that occur in the training sequences).
+/// This function also removes epsilons and makes sure supervision->fst has the
+/// required sorting of states.  Think of it as the final stage in preparation
+/// of the supervision FST.
+bool AddWeightToFst(const fst::StdVectorFst& normalization_fst,
+    fst::StdVectorFst* supervision_fst);
 
 
 /// This function adds weights to the FST in the supervision object, by

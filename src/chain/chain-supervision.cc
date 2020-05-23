@@ -593,6 +593,10 @@ void Supervision::Write(std::ostream &os, bool binary) const {
     }
     WriteToken(os, binary, "</Fsts>");
   }
+  if (numerator_post_targets.NumRows() > 0) {
+      WriteToken(os, binary, "<NumPost>");
+      numerator_post_targets.Write(os, binary);
+  }
   if (!alignment_pdfs.empty()) {
     WriteToken(os, binary, "<AlignmentPdfs>");
     WriteIntegerVector(os, binary, alignment_pdfs);
@@ -607,6 +611,7 @@ void Supervision::Swap(Supervision *other) {
   std::swap(label_dim, other->label_dim);
   std::swap(fst, other->fst);
   std::swap(e2e_fsts, other->e2e_fsts);
+  std::swap(numerator_post_targets, other->numerator_post_targets);
   std::swap(alignment_pdfs, other->alignment_pdfs);
 }
 
@@ -624,6 +629,15 @@ void Supervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<End2End>");
   ReadBasicType(is, binary, &e2e);
   if (!e2e) {
+    if (PeekToken(is, binary) == 'N') {
+        ExpectToken(is, binary, "<NumPost>");
+        numerator_post_targets.Read(is, binary);
+        if (PeekToken(is, binary) == 'N') {
+            ExpectToken(is, binary, "<NumLogProb>");
+            BaseFloat temp;
+            ReadBasicType(is, binary, &temp);
+        }
+    }
     if (!binary) {
       ReadFstKaldi(is, binary, &fst);
     } else {
@@ -652,6 +666,10 @@ void Supervision::Read(std::istream &is, bool binary) {
       }
     }
     ExpectToken(is, binary, "</Fsts>");
+  }
+  if (PeekToken(is, binary) == 'N') {
+      ExpectToken(is, binary, "<NumPost>");
+      numerator_post_targets.Read(is, binary);
   }
   if (PeekToken(is, binary) == 'A') {
     ExpectToken(is, binary, "<AlignmentPdfs>");
@@ -712,7 +730,48 @@ Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
     label_dim(other.label_dim), fst(other.fst),
-    e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs) { }
+    e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs),
+    numerator_post_targets(other.numerator_post_targets) { }
+
+Supervision::Supervision(int32 dim, const Posterior& labels):
+    weight(1.0), num_sequences(1), frames_per_sequence(labels.size()),label_dim(dim){
+    SparseMatrix<BaseFloat> smat(dim, labels);
+    numerator_post_targets = smat;
+}
+
+// This static function merges the numerator posterior targets in
+// input supervision objects and puts it in output supervision.
+// This will be called only when the input supervision has
+// numerator posterior targets.
+void AppendSupervisionPost(const std::vector<const Supervision*>& input,
+    Supervision* output_supervision) {
+    KALDI_ASSERT(!input.empty());
+    int32 label_dim = input[0]->label_dim,
+        num_inputs = input.size();
+    KALDI_ASSERT(num_inputs > 1);
+    KALDI_ASSERT(input[0]->numerator_post_targets.NumRows() > 0);
+
+    KALDI_ASSERT(output_supervision->num_sequences == num_inputs);
+
+    std::vector<GeneralMatrix const*> output_targets(num_inputs);
+    output_targets[0] = &(input[0]->numerator_post_targets);
+
+    for (int32 i = 1; i < num_inputs; i++) {
+        output_targets[i] = &(input[i]->numerator_post_targets);
+        KALDI_ASSERT(output_targets[i]->NumRows() > 0);
+        KALDI_ASSERT(output_targets[i]->NumCols() == label_dim);
+        KALDI_ASSERT(input[i]->frames_per_sequence ==
+            output_supervision->frames_per_sequence);
+    }
+
+    AppendGeneralMatrixRows(
+        output_targets, &(output_supervision->numerator_post_targets),
+        true);    // sort by t
+    KALDI_ASSERT(output_supervision->numerator_post_targets.NumRows()
+        == output_supervision->frames_per_sequence
+        * output_supervision->num_sequences);
+    KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
+}
 
 
 // This static function is called by MergeSupervision if the supervisions
@@ -735,6 +794,14 @@ void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
   output_supervision->alignment_pdfs.clear();
   // The program nnet3-chain-acc-lda-stats works on un-merged egs,
   // and there is no need to support merging of 'alignment_pdfs'
+  if (input[0]->numerator_post_targets.NumRows() > 0) {
+      AppendSupervisionPost(input, output_supervision);
+      KALDI_VLOG(2) << output_supervision->frames_per_sequence << " * "
+          << output_supervision->num_sequences << " == "
+          << output_supervision->numerator_post_targets.NumRows();
+
+      KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
+  }
 }
 
 void MergeSupervision(const std::vector<const Supervision*> &input,
@@ -776,6 +843,15 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
   // The process of concatenation will have introduced epsilons.
   fst::RmEpsilon(&out_fst);
   SortBreadthFirstSearch(&out_fst);
+
+  if (input[0]->numerator_post_targets.NumRows() > 0) {
+      AppendSupervisionPost(input, output_supervision);
+      KALDI_VLOG(2) << output_supervision->frames_per_sequence << " * "
+          << output_supervision->num_sequences << " == "
+          << output_supervision->numerator_post_targets.NumRows();
+
+      KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
+  }
 }
 
 // This static function is called by AddWeightToSupervisionFst if the supervision
@@ -806,6 +882,44 @@ bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
     KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
     return true;
 }
+
+bool AddWeightToFst(const fst::StdVectorFst& normalization_fst,
+    fst::StdVectorFst* supervision_fst) {
+    // remove epsilons before composing.  'normalization_fst' has noepsilons so
+    // the composed result will be epsilon free.
+    fst::StdVectorFst supervision_fst_noeps(*supervision_fst);
+    fst::RmEpsilon(&supervision_fst_noeps);
+    if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+        &supervision_fst_noeps)) {
+        KALDI_WARN << "Failed to determinize supervision fst";
+        return false;
+    }
+
+    // note: by default, 'Compose' will call 'Connect', so if the
+    // resulting FST is not connected, it will end up empty.
+    fst::StdVectorFst composed_fst;
+    fst::Compose(supervision_fst_noeps, normalization_fst,
+        &composed_fst);
+    if (composed_fst.NumStates() == 0) {
+        KALDI_WARN << "FST empty after composing with normalization FST.";
+        return false;
+    }
+    // projection should not be necessary, as both FSTs are acceptors.
+    // determinize and minimize to make it as compact as possible.
+
+    if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+        &composed_fst)) {
+        KALDI_WARN << "Failed to determinize normalized supervision fst";
+        return false;
+    }
+    *supervision_fst = composed_fst;
+    // Make sure the states are numbered in increasing order of time.
+    SortBreadthFirstSearch(supervision_fst);
+    KALDI_ASSERT(supervision_fst->Properties(fst::kAcceptor, true) == fst::kAcceptor);
+    KALDI_ASSERT(supervision_fst->Properties(fst::kIEpsilons, true) == 0);
+    return true;
+}
+
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {

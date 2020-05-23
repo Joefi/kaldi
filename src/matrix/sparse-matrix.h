@@ -210,7 +210,19 @@ class SparseMatrix {
   /// function is destructive of the inputs.  Requires, obviously,
   /// that the inputs all have the same dimension (although some may be
   /// empty).
-  void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> > *inputs);
+  ///void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> > *inputs);
+
+  /// Sets *this to all the rows of *inputs appended together; this
+  /// function is destructive of the inputs.  Requires, obviously,
+  /// that the inputs all have the same dimension (although some may be
+  /// empty).
+  ///
+  /// If sort_by_t is true, all sparse matrixes are appended in a way to be sorted
+  /// w.r.t their local row indexes and then sorted with matrix index.
+  /// i.e. all rows of matrixes with same index are in same block.
+  /// Also number of rows in all matrixes needs to be equal.
+  void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> >* inputs,
+      bool sort_by_t = false);
 
   SparseMatrix() { }
 
@@ -391,8 +403,16 @@ class GeneralMatrix {
 /// GeneralMatrix.  Preserves sparsity if all inputs were sparse (or empty).
 /// Does not preserve compression, if inputs were compressed; you have to
 /// re-compress manually, if that's what you need.
-void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
-                             GeneralMatrix *mat);
+//void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
+//                             GeneralMatrix *mat);
+
+/// Appends all the matrix rows of a list of GeneralMatrixes, to get a single
+/// GeneralMatrix.  Preserves sparsity if all inputs were sparse (or empty).
+/// Does not preserve compression, if inputs were compressed; you have to
+/// re-compress manually, if that's what you need.
+void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix*>& src,
+    GeneralMatrix* mat,
+    bool sort_by_t = false);
 
 
 /// Outputs a SparseMatrix<Real> containing only the rows r of "in" such that
