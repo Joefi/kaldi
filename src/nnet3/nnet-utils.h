@@ -465,6 +465,11 @@ void ApplyL2Regularization(const Nnet &nnet,
                            BaseFloat l2_regularize_scale,
                            Nnet *delta_nnet);
 
+void ApplyL2AdaptationRegularization(Nnet& nnet, Nnet& sd_nnet,
+                           BaseFloat l2_adapt_regularize,
+                           Nnet* si_nnet);
+
+
 
 /**
    This function scales the batchorm stats of any batchnorm components
@@ -553,6 +558,9 @@ struct MaxChangeStats {
   void Print(const Nnet &nnet) const;
 };
 
+void ParseObjectiveScales(
+    const std::string& objective_scales_str,
+    std::unordered_map<std::string, BaseFloat, StringHasher>* objective_scales);
 
 
 } // namespace nnet3

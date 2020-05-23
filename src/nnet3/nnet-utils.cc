@@ -2265,6 +2265,59 @@ void ApplyL2Regularization(const Nnet &nnet,
   }
 }
 
+void ApplyL2AdaptationRegularization(Nnet& nnet, Nnet& sd_nnet,
+    BaseFloat l2_adapt_regularize,
+    Nnet* si_nnet) {
+    if (l2_adapt_regularize == 0.0)
+        return;
+    for (int32 c = 0; c < sd_nnet.NumComponents(); c++) {
+        Component* sd_component_in = sd_nnet.GetComponent(c);
+        if (sd_component_in->Properties() & kUpdatableComponent) {
+            UpdatableComponent* component =
+                dynamic_cast<UpdatableComponent*>(nnet.GetComponent(c));
+            UpdatableComponent* sd_component =
+                dynamic_cast<UpdatableComponent*>(sd_component_in);
+            UpdatableComponent* si_component =
+                dynamic_cast<UpdatableComponent*>(si_nnet->GetComponent(c));
+            // The following code will segfault if they aren't both updatable, which
+            // would be a bug in the calling code.
+            BaseFloat lrate = sd_component->LearningRate();
+            BaseFloat scale = -2.0 * l2_adapt_regularize * lrate;
+            if (scale != 0) {
+                if (sd_component->Type() == "AffineComponent") {
+                    AffineComponent* affine = dynamic_cast<AffineComponent*>(component);
+                    AffineComponent* sd_affine = dynamic_cast<AffineComponent*>(sd_component);
+                    AffineComponent* si_affine = dynamic_cast<AffineComponent*>(si_component);
+                    CuMatrix<BaseFloat> linear_tmp(affine->LinearParams());
+                    linear_tmp.AddMat(-1.0, si_affine->LinearParams());
+                    CuMatrix<BaseFloat> linear_params(sd_affine->LinearParams());
+                    linear_params.AddMat(scale, linear_tmp);
+                    CuVector<BaseFloat> bias_tmp(affine->BiasParams());
+                    bias_tmp.AddVec(-1.0, si_affine->BiasParams());
+                    CuVector<BaseFloat> bias_params(sd_affine->BiasParams());
+                    bias_params.AddVec(scale, bias_tmp);
+                    sd_affine->SetParams(bias_params, linear_params);
+                }
+                else if (sd_component->Type() == "NaturalGradientAffineComponent") {
+                    NaturalGradientAffineComponent* affine = dynamic_cast<NaturalGradientAffineComponent*>(component);
+                    NaturalGradientAffineComponent* sd_affine = dynamic_cast<NaturalGradientAffineComponent*>(sd_component);
+                    NaturalGradientAffineComponent* si_affine = dynamic_cast<NaturalGradientAffineComponent*>(si_component);
+                    CuMatrix<BaseFloat> linear_tmp(affine->LinearParams());
+                    linear_tmp.AddMat(-1.0, si_affine->LinearParams());
+                    CuMatrix<BaseFloat> linear_params(sd_affine->LinearParams());
+                    linear_params.AddMat(scale, linear_tmp);
+                    CuVector<BaseFloat> bias_tmp(affine->BiasParams());
+                    bias_tmp.AddVec(-1.0, si_affine->BiasParams());
+                    CuVector<BaseFloat> bias_params(sd_affine->BiasParams());
+                    bias_params.AddVec(scale, bias_tmp);
+                    sd_affine->SetParams(bias_params, linear_params);
+                }
+            }
+        }
+    }
+}
+
+
 
 bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              BaseFloat max_param_change,
@@ -2307,6 +2360,26 @@ void MaxChangeStats::Print(const Nnet &nnet) const {
               << " \% of the time.";
 }
 
+void ParseObjectiveScales(
+    const std::string& objective_scales_str,
+    std::unordered_map<std::string, BaseFloat, StringHasher>* objective_scales) {
+    objective_scales->clear();
+
+    std::vector<std::string> objectives_for_outputs;
+    SplitStringToVector(objective_scales_str, ", ", false,
+        &objectives_for_outputs);
+    std::vector<std::string>::const_iterator it = objectives_for_outputs.begin();
+    for (; it != objectives_for_outputs.end(); ++it) {
+        std::vector<std::string> this_output_objective;
+        SplitStringToVector(*it, ":", false,
+            &this_output_objective);
+
+        BaseFloat scale;
+        ConvertStringToReal(this_output_objective[1], &scale);
+        objective_scales->insert(
+            std::make_pair(this_output_objective[0], scale));
+    }
+}
 
 } // namespace nnet3
 } // namespace kaldi
