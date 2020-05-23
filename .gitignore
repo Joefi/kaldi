@@ -160,3 +160,4 @@ GSYMS
 /build*
 
 .vs
+out
