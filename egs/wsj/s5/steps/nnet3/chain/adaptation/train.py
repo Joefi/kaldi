@@ -18,9 +18,9 @@ import sys
 import traceback
 
 sys.path.insert(0, 'steps')
-import libs.nnet3.train.common as common_train_lib
+import libs.nnet3.adaptation.common as common_train_lib
 import libs.common as common_lib
-import libs.nnet3.train.chain_objf.acoustic_model as chain_lib
+import libs.nnet3.adaptation.chain.acoustic_model as chain_lib
 import libs.nnet3.report.log_parse as nnet3_log_parse
 
 
