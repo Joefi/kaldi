@@ -15,7 +15,7 @@ BINFILES = chain-est-phone-lm chain-get-supervision chain-make-den-fst \
         chain-make-num-fst-e2e \
 		nnet3-chain-train2 nnet3-chain-combine2 \
         nnet3-chain-ts-train nnet3-chain-ts-combine nnet3-chain-ts-compute-prob \
-        nnet3-chain-get-egs-post nnet3-chain-split-and-get-egs
+        nnet3-chain-get-egs-post nnet3-chain-split-and-get-egs nnet3-chain-adaptation
 
 
 OBJFILES =
