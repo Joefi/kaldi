@@ -232,7 +232,7 @@ namespace kaldi {
             to_read -= ret;
             has_read_ += ret;
         }
-        has_read_ /= sizeof(int16);
+        has_read_ /= sizeof(char);
 
         return has_read_ > 0;
     }
