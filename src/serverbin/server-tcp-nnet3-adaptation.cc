@@ -30,9 +30,7 @@ namespace kaldi {
 
         bool ReadChunk(size_t len); // get more data and return false if end-of-stream
 
-        Vector<BaseFloat> GetChunk(); // get the data read by above method
-
-        size_t GetBuffer(int16 buffer[], int len);
+        size_t GetBuffer(char buffer[], int len);
 
         bool Write(const std::string& msg); // write to accepted client
         bool WriteLn(const std::string& msg, const std::string& eol = "\n"); // write line to accepted client
@@ -42,7 +40,7 @@ namespace kaldi {
     private:
         struct ::sockaddr_in h_addr_;
         int32 server_desc_, client_desc_;
-        int16* samp_buf_;
+        char* samp_buf_;
         size_t buf_len_, has_read_;
         pollfd client_set_[1];
         int read_timeout_;
@@ -91,7 +89,7 @@ int main(int argc, char* argv[]) {
                     KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
                     break;
                 }
-                int16 buffer[chunk_len];
+                char buffer[chunk_len];
                 while(true)
                 {
                     eos = !server.ReadChunk(chunk_len);
@@ -105,7 +103,7 @@ int main(int argc, char* argv[]) {
                         break;
                     }
                     size_t len = server.GetBuffer(buffer, chunk_len);
-                    if (fwrite(buffer, sizeof(int16), len, fp) < len)
+                    if (fwrite(buffer, sizeof(char), len, fp) < len)
                     {
                         KALDI_VLOG(1) << "File:\t" << file_name << "Write Failed\n";
                         break;
@@ -209,13 +207,12 @@ namespace kaldi {
         if (buf_len_ != len) {
             buf_len_ = len;
             delete[] samp_buf_;
-            samp_buf_ = new int16[len];
+            samp_buf_ = new char[len];
         }
 
         ssize_t ret;
         int poll_ret;
-        char* samp_buf_p = reinterpret_cast<char*>(samp_buf_);
-        size_t to_read = len * sizeof(int16);
+        size_t to_read = len * sizeof(char);
         has_read_ = 0;
         while (to_read > 0) {
             poll_ret = poll(client_set_, 1, read_timeout_);
@@ -227,7 +224,7 @@ namespace kaldi {
                 KALDI_WARN << "Socket error! Disconnecting...";
                 break;
             }
-            ret = read(client_desc_, static_cast<void*>(samp_buf_p + has_read_), to_read);
+            ret = read(client_desc_, static_cast<void*>(samp_buf_ + has_read_), to_read);
             if (ret <= 0) {
                 KALDI_WARN << "Stream over...";
                 break;
@@ -240,18 +237,7 @@ namespace kaldi {
         return has_read_ > 0;
     }
 
-    Vector<BaseFloat> TcpServer::GetChunk() {
-        Vector<BaseFloat> buf;
-
-        buf.Resize(static_cast<MatrixIndexT>(has_read_));
-
-        for (int i = 0; i < has_read_; i++)
-            buf(i) = static_cast<BaseFloat>(samp_buf_[i]);
-
-        return buf;
-    }
-
-    size_t TcpServer::GetBuffer(int16 buffer[], int len) {
+    size_t TcpServer::GetBuffer(char buffer[], int len) {
         int l = has_read_;
         if (has_read_ > len)
         {   
