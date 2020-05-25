@@ -32,7 +32,7 @@ namespace kaldi {
 
         Vector<BaseFloat> GetChunk(); // get the data read by above method
 
-        size_t GetBuffer(char buffer[], int len);
+        size_t GetBuffer(int16 buffer[], int len);
 
         bool Write(const std::string& msg); // write to accepted client
         bool WriteLn(const std::string& msg, const std::string& eol = "\n"); // write line to accepted client
@@ -251,9 +251,14 @@ namespace kaldi {
         return buf;
     }
 
-    size_t TcpServer::GetBuffer(char buffer[], int len) {
-        memcpy(buffer, samp_buf_, has_read_);
-        return has_read_;
+    size_t TcpServer::GetBuffer(int16 buffer[], int len) {
+        int l = has_read_;
+        if (has_read_ > len)
+        {   
+            l = len;
+        }
+        memcpy(buffer, samp_buf_, l);
+        return l;
     }
 
     bool TcpServer::Write(const std::string& msg) {
