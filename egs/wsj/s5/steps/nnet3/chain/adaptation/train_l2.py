@@ -195,6 +195,7 @@ def get_args():
     parser.add_argument("--si-dir", type=str, required=True,
                         help="Directory to store the speaker independent models and "
                              "all other files.")
+    parser.add_argument("--adapt-component-name", type=str, default="", help="The component name to adapt")
     parser.add_argument("--si-model", type=str, required=True,
                         help="Speaker-independent model or fisher model used for adaptation")
 
@@ -540,7 +541,10 @@ def train(args, run_opts):
                                                     epoch, args.num_epochs,
                                                     percent,
                                                     lrate, shrink_info_str))
-
+            edits = ""
+            if len(args.adapt_component_name) != 0:
+                edits = "set-learning-rate name=" + args.adapt_component_name + " learning-rate=" + str(lrate)
+                lrate = 0.0
             chain_lib.train_one_iteration(
                 si_model=args.si_model,
                 dir=args.dir,
@@ -551,6 +555,7 @@ def train(args, run_opts):
                 num_archives_processed=num_archives_processed,
                 num_archives=num_archives,
                 learning_rate=lrate,
+                edits=edits,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,

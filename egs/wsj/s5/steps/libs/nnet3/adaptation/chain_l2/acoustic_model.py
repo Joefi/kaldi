@@ -264,7 +264,7 @@ def train_new_models(dir, iter, srand, num_jobs,
 
 def train_one_iteration(si_model, dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
-                        learning_rate, shrinkage_value,
+                        learning_rate, edits, shrinkage_value,
                         num_chunk_per_minibatch_str,
                         apply_deriv_weights, min_deriv_time,
                         max_deriv_time_relative,
@@ -313,9 +313,9 @@ def train_one_iteration(si_model, dir, iter, srand, egs_dir,
 
     do_average = (iter > 0)
 
-    raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} "
-                        "--scale={1} {2}/{3}.mdl - |".format(
-                            learning_rate, shrinkage_value, dir, iter))
+    raw_model_string = ("nnet3-am-copy --raw=true --learning-rate={0} --edits='{1}' "
+                        "--scale={2} {3}/{4}.mdl - |".format(
+                            learning_rate, edits, shrinkage_value, dir, iter))
 
     si_raw_model_string = ("nnet3-am-copy --raw=true {0} - |".format(si_model))
 
