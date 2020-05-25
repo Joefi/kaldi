@@ -10,7 +10,7 @@
 #include "util/kaldi-thread.h"
 #include "base/kaldi-common.h"
 #include "matrix/matrix-common.h"
-#include "utils/parse-options.h"
+#include "util/parse-options.h"
 
 namespace kaldi {
 
