@@ -8,9 +8,9 @@
 #include <string>
 
 #include "util/kaldi-thread.h"
-#include "nnet3/nnet-utils.h"
 #include "base/kaldi-common.h"
 #include "matrix/matrix-common.h"
+#include "utils/parse-options.h"
 
 namespace kaldi {
 
@@ -26,7 +26,7 @@ namespace kaldi {
 
         Vector<BaseFloat> GetChunk(); // get the data read by above method
 
-        int16* GetBuffer();
+        size_t GetBuffer(char buffer[], int len);
 
         bool Write(const std::string& msg); // write to accepted client
         bool WriteLn(const std::string& msg, const std::string& eol = "\n"); // write line to accepted client
@@ -46,6 +46,7 @@ namespace kaldi {
 int main(int argc, char* argv[]) {
     try
     {
+        using namespace kaldi;
         const char* usage =
             "Reads in audio zip file from a network socket and performs adaptation\n"
             "with neural nets (nnet3 setup),\n" 
@@ -71,6 +72,8 @@ int main(int argc, char* argv[]) {
 
             server.Accept();
 
+            size_t chunk_len = 2048;
+
             bool eos = false;
 
             while (!eos)
@@ -82,7 +85,7 @@ int main(int argc, char* argv[]) {
                     KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
                     break;
                 }
-
+                char buffer[chunk_len];
                 while(true)
                 {
                     eos = !server.ReadChunk(chunk_len);
@@ -95,8 +98,8 @@ int main(int argc, char* argv[]) {
                         server.Disconnect();
                         break;
                     }
-                    int16* buffer = server.GetBuffer();
-                    if (fwrite(buffer, sizeof(int16), length, fp) < length)
+                    size_t len = server.GetBuffer(buffer, chunk_len);
+                    if (fwrite(buffer, sizeof(int16), len, fp) < len)
                     {
                         KALDI_VLOG(1) << "File:\t" << file_name << "Write Failed\n";
                         break;
@@ -109,7 +112,7 @@ int main(int argc, char* argv[]) {
 
         }
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
         std::cerr << e.what();
         return -1;
@@ -242,8 +245,9 @@ namespace kaldi {
         return buf;
     }
 
-    int16* TcpServer::GetBuffer() {
-        return samp_buf_;
+    size_t TcpServer::GetBuffer(char buffer[], int len) {
+        memcpy(buffer, samp_buf_, has_read_);
+        return has_read_;
     }
 
     bool TcpServer::Write(const std::string& msg) {
