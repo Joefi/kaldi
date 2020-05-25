@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
                     KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
                     break;
                 }
-                char buffer[chunk_len];
+                int16 buffer[chunk_len];
                 while(true)
                 {
                     eos = !server.ReadChunk(chunk_len);
