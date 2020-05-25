@@ -23,6 +23,8 @@ public:
 
     Vector<BaseFloat> GetChunk(); // get the data read by above method
 
+    int16* GetBuffer();
+
     bool Write(const std::string& msg); // write to accepted client
     bool WriteLn(const std::string& msg, const std::string& eol = "\n"); // write line to accepted client
 
@@ -38,6 +40,78 @@ private:
 };
 
 int main(int argc, char* argv[]) {
+    try
+    {
+        const char* usage =
+            "Reads in audio zip file from a network socket and performs adaptation\n"
+            "with neural nets (nnet3 setup), 
+            "\n"
+            "Usage: server-tcp-nnet3-adaptation [options] <nnet3-in> "
+            "<fst-in> <word-symbol-table>\n";
+
+        ParseOptions po(usage);
+
+        int port_num = 5051;
+        int read_timeout = 3;
+
+        po.Register("read-timeout", &read_timeout,
+            "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
+        po.Register("port-num", &port_num,
+            "Port number the server will listen on.");
+
+        TcpServer server(read_timeout);
+
+        server.Listen(port_num);
+
+        while (true) {
+
+            server.Accept();
+
+            bool eos = false;
+
+            while (!eos)
+            {
+                char* file_name = "temp.zip";
+                FILE* fp = fopen(file_name, "w");
+                if (NULL == fp)
+                {
+                    KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
+                    break;
+                }
+
+                while(true)
+                {
+                    eos = !server.ReadChunk(chunk_len);
+
+                    if (eos) {
+                        close(fp);
+
+                        //TODO
+
+                        server.Disconnect();
+                        break;
+                    }
+                    int16* buffer = server.GetBuffer();
+                    if (fwrite(buffer, sizeof(int16), length, fp) < length)
+                    {
+                        KALDI_VLOG(1) << "File:\t" << file_name << "Write Failed\n";
+                        break;
+                    }
+
+                }
+        
+            }
+        
+
+        }
+    }
+    catch (const std::exception&)
+    {
+        std::cerr << e.what();
+        return -1;
+    }
+
+
 
 }
 
@@ -162,6 +236,10 @@ namespace kaldi {
             buf(i) = static_cast<BaseFloat>(samp_buf_[i]);
 
         return buf;
+    }
+
+    int16* TcpServer::GetBuffer() {
+        return samp_buf_;
     }
 
     bool TcpServer::Write(const std::string& msg) {
