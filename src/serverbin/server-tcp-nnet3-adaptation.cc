@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
                     eos = !server.ReadChunk(chunk_len);
 
                     if (eos) {
-                        close(fp);
+                        fclose(fp);
 
                         //TODO
 
