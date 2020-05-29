@@ -55,8 +55,7 @@ int main(int argc, char* argv[]) {
             "Reads in audio zip file from a network socket and performs adaptation\n"
             "with neural nets (nnet3 setup),\n" 
             "\n"
-            "Usage: server-tcp-nnet3-adaptation [options] <nnet3-in> "
-            "<fst-in> <word-symbol-table>\n";
+            "Usage: server-tcp-nnet3-adaptation [options] <save-dir> <adaptation-shell-script>\n";
 
         ParseOptions po(usage);
 
@@ -67,6 +66,11 @@ int main(int argc, char* argv[]) {
             "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
         po.Register("port-num", &port_num,
             "Port number the server will listen on.");
+
+        po.Read(argc, argv);
+
+        std::string save_dir = po.GetArg(1),
+            shell_script = po.GetArg(2);
 
         TcpServer server(read_timeout);
 
@@ -82,7 +86,7 @@ int main(int argc, char* argv[]) {
 
             while (!eos)
             {
-                char* file_name = "temp.zip";
+                char* file_name = save_dir + "/temp.zip";
                 FILE* fp = fopen(file_name, "w");
                 if (NULL == fp)
                 {
@@ -97,8 +101,35 @@ int main(int argc, char* argv[]) {
                     if (eos) {
                         fclose(fp);
 
-                        //TODO
+                        std::string msg = "¿ªÊ¼ÑµÁ·...";
+                        server.WriteLn(msg);
+                        
+                        int rv = system(shell_script + " " + file_name);
+                        if (WIFEXITED(rv))
+                        {
+                            KALDI_VLOG(1) << "subprocess exited, exit code:" << WEXITSTATUS(rv);
+                            if (0 == WEXITSTATUS(rv))
+                            {
+                                KALDI_VLOG(1) << "command succeed\n";
+                            }
+                            else
+                            {
+                                if (127 == WEXITSTATUS(rv))
+                                {
+                                    KALDI_VLOG(1) << "command not found\n";
+                                }
+                                else
+                                {
+                                    KALDI_VLOG(1) << "command failed:" << strerror(WEXITSTATUS(rv);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            KALDI_VLOG(1) << "subprocess exit failed";
+                        }
 
+                        //TODO
                         server.Disconnect();
                         break;
                     }
