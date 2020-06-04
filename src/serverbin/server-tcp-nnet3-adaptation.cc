@@ -123,7 +123,7 @@ int main(int argc, char* argv[]) {
                                 }
                                 else
                                 {
-                                    KALDI_VLOG(1) << "command failed:" << strerror(WEXITSTATUS(rv);
+                                    KALDI_VLOG(1) << "command failed:" << strerror(WEXITSTATUS(rv));
                                 }
                             }
                         }
