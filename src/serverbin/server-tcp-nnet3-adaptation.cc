@@ -72,6 +72,8 @@ int main(int argc, char* argv[]) {
         std::string save_dir = po.GetArg(1),
             shell_script = po.GetArg(2);
 
+        std::string temp_dir = "/temp.zip";
+
         TcpServer server(read_timeout);
 
         server.Listen(port_num);
@@ -86,8 +88,9 @@ int main(int argc, char* argv[]) {
 
             while (!eos)
             {
-                char* file_name = save_dir + "/temp.zip";
-                FILE* fp = fopen(file_name, "w");
+                std::string s_file_path= save_dir + temp_dir;
+
+                FILE* fp = fopen(s_file_path.c_str(), "w");
                 if (NULL == fp)
                 {
                     KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
