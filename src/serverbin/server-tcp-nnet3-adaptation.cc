@@ -106,8 +106,8 @@ int main(int argc, char* argv[]) {
 
                         std::string msg = "¿ªÊ¼ÑµÁ·...";
                         server.WriteLn(msg);
-                        
-                        int rv = system(shell_script + " " + s_file_path);
+                        std::string command = shell_script + " " + s_file_path;
+                        int rv = system(command);
                         if (WIFEXITED(rv))
                         {
                             KALDI_VLOG(1) << "subprocess exited, exit code:" << WEXITSTATUS(rv);
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
                     size_t len = server.GetBuffer(buffer, chunk_len);
                     if (fwrite(buffer, sizeof(char), len, fp) < len)
                     {
-                        KALDI_VLOG(1) << "File:\t" << file_name << "Write Failed\n";
+                        KALDI_VLOG(1) << "File:\t" << s_file_path << "Write Failed\n";
                         break;
                     }
 
