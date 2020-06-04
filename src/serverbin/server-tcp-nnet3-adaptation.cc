@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
                     if (eos) {
                         fclose(fp);
 
-                        std::string msg = "¿ªÊ¼ÑµÁ·...";
+                        std::string msg = "start adaptation...";
                         server.WriteLn(msg);
                         std::string command = shell_script + " " + s_file_path;
                         int rv = system(command.c_str());
