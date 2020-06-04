@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
                         std::string msg = "¿ªÊ¼ÑµÁ·...";
                         server.WriteLn(msg);
                         std::string command = shell_script + " " + s_file_path;
-                        int rv = system(command);
+                        int rv = system(command.c_str());
                         if (WIFEXITED(rv))
                         {
                             KALDI_VLOG(1) << "subprocess exited, exit code:" << WEXITSTATUS(rv);
