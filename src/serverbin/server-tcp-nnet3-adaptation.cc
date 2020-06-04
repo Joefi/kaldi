@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
                 FILE* fp = fopen(s_file_path.c_str(), "w");
                 if (NULL == fp)
                 {
-                    KALDI_VLOG(1) << "File:" << file_name << "Can Not Open To Write\n";
+                    KALDI_VLOG(1) << "File:" << s_file_path << "Can Not Open To Write\n";
                     break;
                 }
                 char buffer[chunk_len];
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
                         std::string msg = "¿ªÊ¼ÑµÁ·...";
                         server.WriteLn(msg);
                         
-                        int rv = system(shell_script + " " + file_name);
+                        int rv = system(shell_script + " " + s_file_path);
                         if (WIFEXITED(rv))
                         {
                             KALDI_VLOG(1) << "subprocess exited, exit code:" << WEXITSTATUS(rv);
