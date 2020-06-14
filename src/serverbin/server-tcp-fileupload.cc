@@ -118,8 +118,8 @@ int main(int argc, char* argv[]) {
             {
                 FILEINFO fileInfo;
                 eos = !server.ReadChunk(chunk_len);
-                size_t len = server.GetBuffer(&fileInfo, sizeof(fileInfo));
-                std::string filename(fileInfo.file);
+                size_t len = server.GetBuffer((char *)&fileInfo, sizeof(fileInfo));
+                std::string filename(fileInfo.fileName);
                 std::string s_file_path= save_dir + '/' + filename;
 
                 FILE* fp = fopen(s_file_path.c_str(), "w");
