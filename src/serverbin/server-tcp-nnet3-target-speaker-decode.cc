@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
             server.GetBuffer(recv_speaker_name, sizeof(recv_speaker_name));
 
             std::string speaker_name_str(speaker_name);
-            std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + '/' + speaker_name_str + '.mdl';
+            std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + "/" + speaker_name_str + ".mdl";
 
             KALDI_VLOG(1) << "Loading AM...";
             
