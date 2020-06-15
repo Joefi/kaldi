@@ -244,7 +244,7 @@ int main(int argc, char* argv[]) {
             std::string speaker_name_str(recv_speaker_name);
             std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + "/" + speaker_name_str + ".mdl";
 
-            KALDI_VLOG(1) << "Loading AM...";
+            KALDI_VLOG(1) << "Loading AM:" << speaker_nnet3_rxfilename;
             
             if(strcmp(recv_speaker_name, speaker_name) != 0) 
             {   
