@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = server-tcp-nnet3-decode-faster server-tcp-nnet3-adaptation server-tcp-fileupload
+BINFILES = server-tcp-nnet3-decode-faster server-tcp-nnet3-adaptation server-tcp-fileupload server-tcp-nnet3-target-speaker-decode
 
 OBJFILES =
 
