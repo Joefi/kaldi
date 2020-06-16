@@ -27,6 +27,7 @@ namespace kaldi {
 
         bool ReadChunk(size_t len); // get more data and return false if end-of-stream
 
+        bool ReadBuffer(size_t len);
         size_t GetBuffer(char buffer[], int len);
 
         bool Write(const std::string& msg); // write to accepted client
@@ -102,8 +103,21 @@ int main(int argc, char* argv[]) {
             bool eos = false;
 
             char recv_command[100];
-            eos = !server.ReadChunk(chunk_len);
+            eos = !server.ReadBuffer(chunk_len);
             server.GetBuffer(recv_command, sizeof(recv_command));
+
+           /* while (!eos) {
+
+                while (true) {
+                    eos = !server.ReadChunk(chunk_len);
+
+                    if (eos) {
+
+                    }
+                }
+
+            }*/
+
             if (strcmp(recv_command, "list")==0) {
                 char filenames[256][100];
                 int num = scan_dir(model_dir.c_str(), filenames);
@@ -113,9 +127,8 @@ int main(int argc, char* argv[]) {
                     msg = msg + name + "#";
                 }
                 server.WriteLn(msg, "\n");
+                server.Disconnect();
             }
-
-            
         }
     }
     catch (const std::exception& e) {
@@ -202,6 +215,42 @@ namespace kaldi {
     }
 
     bool TcpServer::ReadChunk(size_t len) {
+        if (buf_len_ != len) {
+            buf_len_ = len;
+            delete[] samp_buf_;
+            samp_buf_ = new int16[len];
+        }
+
+        ssize_t ret;
+        int poll_ret;
+        char* samp_buf_p = reinterpret_cast<char*>(samp_buf_);
+        size_t to_read = len * sizeof(int16);
+        has_read_ = 0;
+        while (to_read > 0) {
+            poll_ret = poll(client_set_, 1, read_timeout_);
+            if (poll_ret == 0) {
+                KALDI_WARN << "Socket timeout! Disconnecting..." << "(has_read_ = " << has_read_ << ")";
+                break;
+            }
+            if (poll_ret < 0) {
+                KALDI_WARN << "Socket error! Disconnecting...";
+                break;
+            }
+            ret = read(client_desc_, static_cast<void*>(samp_buf_p + has_read_), to_read);
+            if (ret <= 0) {
+                KALDI_WARN << "Stream over...";
+                break;
+            }
+            to_read -= ret;
+            has_read_ += ret;
+        }
+        has_read_ /= sizeof(int16);
+
+        return has_read_ > 0;
+    }
+
+    bool TcpServer::ReadBuffer(size_t len) {
+        len = len / 2;
         if (buf_len_ != len) {
             buf_len_ = len;
             delete[] samp_buf_;
