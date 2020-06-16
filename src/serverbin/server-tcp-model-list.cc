@@ -109,9 +109,10 @@ int main(int argc, char* argv[]) {
                 int num = scan_dir(model_dir.c_str(), filenames);
                 std::string msg = "";
                 for (int i = 0; i < num; i++) {
-                    msg += std::string(filnames[i]) + "#";
+                    std::string name = filenames[i; ]
+                    msg = msg + name + "#";
                 }
-                server.WriteLn(msg, "\n");
+                server.WriteLn(msg, "\n");s
             }
 
             
