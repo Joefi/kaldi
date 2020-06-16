@@ -244,10 +244,25 @@ int main(int argc, char* argv[]) {
             std::string speaker_name_str(recv_speaker_name);
             std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + "/" + speaker_name_str + ".mdl";
 
-            KALDI_VLOG(1) << "Loading AM:" << speaker_nnet3_rxfilename;
             
             if(strcmp(recv_speaker_name, speaker_name) != 0) 
             {   
+                //check if model exist
+                fstream _file;
+                _file.open(speaker_nnet3_rxfilename.c_str(), std::ios_base::in);
+                if (!_file)
+                {
+                    KALDI_VLOG(1) << "Acoustic molde not exist...";
+                    server.WriteLn("Acoustic molde not exist");
+                    server.Disconnect();
+                    continue;
+                } 
+                else 
+                {
+                    _file.close();
+                }
+
+                KALDI_VLOG(1) << "Loading AM:" << speaker_nnet3_rxfilename;
                 strcpy(speaker_name, recv_speaker_name);
                 // load speaker acoustic model
                 {
