@@ -43,7 +43,7 @@ namespace kaldi {
         int read_timeout_;
     };
 
-     int scan_dir(char* dir, char* filenames[]) {
+     int scan_dir(const char* dir, char filenames[][]) {
         DIR* dp = NULL;
         struct dirent* entry = NULL;
         if ((dp = opendir(dir)) == NULL) // Open dir 
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
             eos = !server.ReadChunk(chunk_len);
             server.GetBuffer(recv_command, sizeof(recv_command));
             if (strcmp(recv_command, "list")==0) {
-                char filenames[256][10];
+                char filenames[256][100];
                 int num = scan_dir(model_dir.c_str(), filenames);
                 
             }
