@@ -43,7 +43,7 @@ namespace kaldi {
         int read_timeout_;
     };
 
-     int scan_dir(const char* dir, char filenames[][]) {
+     int scan_dir(const char* dir, char filenames[][100]) {
         DIR* dp = NULL;
         struct dirent* entry = NULL;
         if ((dp = opendir(dir)) == NULL) // Open dir 
