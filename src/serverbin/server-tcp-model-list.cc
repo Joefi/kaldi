@@ -77,7 +77,6 @@ int main(int argc, char* argv[]) {
         ParseOptions po(usage);
         int port_num = 5053;
         int read_timeout = 3;
-        bool produce_time = false;
         size_t chunk_len = 100;
         char command[100] = "";
 
@@ -108,7 +107,11 @@ int main(int argc, char* argv[]) {
             if (strcmp(recv_command, "list")==0) {
                 char filenames[256][100];
                 int num = scan_dir(model_dir.c_str(), filenames);
-                
+                std::string msg = "";
+                for (int i = 0; i < num; i++) {
+                    msg += std::string(filnames[i]) + "#";
+                }
+                server.WriteLn(msg, "\n");
             }
 
             
