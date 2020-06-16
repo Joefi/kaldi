@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
         const char* usage =
             "Get the exist acoustic modeo for recoginition\n"
-            "\n"
+            "\n";
 
         ParseOptions po(usage);
         int port_num = 5053;
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
             server.GetBuffer(recv_command, sizeof(recv_command));
             if (strcmp(recv_command, "list")==0) {
                 char filenames[256][10];
-                int num = scan_dir(model_dir, filenames);
+                int num = scan_dir(model_dir.c_str(), filenames);
                 
             }
 
