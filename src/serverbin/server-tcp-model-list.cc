@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
                     std::string name = filenames[i];
                     msg = msg + name + "#";
                 }
-                server.WriteLn(msg, "\n");s
+                server.WriteLn(msg, "\n");
             }
 
             
