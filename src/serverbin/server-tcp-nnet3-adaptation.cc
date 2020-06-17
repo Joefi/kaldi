@@ -19,6 +19,11 @@
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
+    struct FILEINFO
+    {
+        int fileLength;
+        char fileName[100];
+    };
 
     class TcpServer {
     public:
