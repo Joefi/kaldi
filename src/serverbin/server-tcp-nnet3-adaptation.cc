@@ -72,8 +72,6 @@ int main(int argc, char* argv[]) {
         std::string save_dir = po.GetArg(1),
             shell_script = po.GetArg(2);
 
-        std::string temp_dir = "/temp.zip";
-
         TcpServer server(read_timeout);
 
         server.Listen(port_num);
@@ -88,7 +86,11 @@ int main(int argc, char* argv[]) {
 
             while (!eos)
             {
-                std::string s_file_path= save_dir + temp_dir;
+                FILEINFO fileInfo;
+                eos = !server.ReadChunk(sizeof(fileInfo));
+                size_t len = server.GetBuffer((char*)&fileInfo, sizeof(fileInfo));
+                std::string filename(fileInfo.fileName);
+                std::string s_file_path = save_dir + '/' + filename;
 
                 FILE* fp = fopen(s_file_path.c_str(), "w");
                 if (NULL == fp)

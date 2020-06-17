@@ -243,7 +243,7 @@ int main(int argc, char* argv[]) {
             server.GetBuffer(recv_speaker_name, sizeof(recv_speaker_name));
 
             std::string speaker_name_str(recv_speaker_name);
-            std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + "/" + speaker_name_str + ".mdl";
+            std::string speaker_nnet3_rxfilename = speaker_nnet3_dir + "/" + speaker_name_str + "/final.mdl";
 
             
             if(strcmp(recv_speaker_name, speaker_name) != 0) 
