@@ -81,14 +81,14 @@ int main(int argc, char* argv[]) {
         size_t chunk_len = 100;
         char command[100] = "";
 
-        std::string model_dir = "/home/cca01/work2019/luoxiaojie/SpeakerData/model";
-
         po.Register("read-timeout", &read_timeout,
             "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
         po.Register("port-num", &port_num,
             "Port number the server will listen on.");
 
         po.Read(argc, argv);
+
+        std::string model_dir = po.GetArg(1)
 
         signal(SIGPIPE, SIG_IGN); // ignore SIGPIPE to avoid crashing when socket forcefully disconnected
 
