@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
 
         const char* usage =
             "Get the exist acoustic modeo for recoginition\n"
+            "Usage: server-tcp-model-list [options] <model-dir> "
             "\n";
 
         ParseOptions po(usage);
@@ -87,6 +88,11 @@ int main(int argc, char* argv[]) {
             "Port number the server will listen on.");
 
         po.Read(argc, argv);
+
+        if (po.NumArgs() != 1) {
+            po.PrintUsage();
+            return 1;
+        }
 
         std::string model_dir = po.GetArg(1)
 

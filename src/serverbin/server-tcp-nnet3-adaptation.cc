@@ -74,6 +74,11 @@ int main(int argc, char* argv[]) {
 
         po.Read(argc, argv);
 
+        if (po.NumArgs() != 2) {
+            po.PrintUsage();
+            return 1;
+        }
+
         std::string save_dir = po.GetArg(1),
             shell_script = po.GetArg(2);
 
