@@ -593,14 +593,22 @@ void Supervision::Write(std::ostream &os, bool binary) const {
     }
     WriteToken(os, binary, "</Fsts>");
   }
-  if (numerator_post_targets.NumRows() > 0) {
-      WriteToken(os, binary, "<NumPost>");
-      numerator_post_targets.Write(os, binary);
-  }
+
   if (!alignment_pdfs.empty()) {
     WriteToken(os, binary, "<AlignmentPdfs>");
     WriteIntegerVector(os, binary, alignment_pdfs);
   }
+
+  if (numerator_post_targets.NumRows() > 0) {
+      WriteToken(os, binary, "<NumPost>");
+      numerator_post_targets.Write(os, binary);
+  }
+
+  if (phone_post.NumRows() > 0) {
+      WriteToken(os, binary, "<PhonePost>");
+      phone_post.Write(os, binary);
+  }
+
   WriteToken(os, binary, "</Supervision>");
 }
 
@@ -612,6 +620,7 @@ void Supervision::Swap(Supervision *other) {
   std::swap(fst, other->fst);
   std::swap(e2e_fsts, other->e2e_fsts);
   std::swap(numerator_post_targets, other->numerator_post_targets);
+  std::swap(phone_post, other->phone_post);
   std::swap(alignment_pdfs, other->alignment_pdfs);
 }
 
@@ -629,7 +638,7 @@ void Supervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<End2End>");
   ReadBasicType(is, binary, &e2e);
   if (!e2e) {
-    if (PeekToken(is, binary) == 'N') {
+    /*if (PeekToken(is, binary) == 'N') {
         ExpectToken(is, binary, "<NumPost>");
         numerator_post_targets.Read(is, binary);
         if (PeekToken(is, binary) == 'N') {
@@ -637,7 +646,7 @@ void Supervision::Read(std::istream &is, bool binary) {
             BaseFloat temp;
             ReadBasicType(is, binary, &temp);
         }
-    }
+    }*/
     if (!binary) {
       ReadFstKaldi(is, binary, &fst);
     } else {
@@ -667,16 +676,22 @@ void Supervision::Read(std::istream &is, bool binary) {
     }
     ExpectToken(is, binary, "</Fsts>");
   }
-  if (PeekToken(is, binary) == 'N') {
-      ExpectToken(is, binary, "<NumPost>");
-      numerator_post_targets.Read(is, binary);
-  }
+  
   if (PeekToken(is, binary) == 'A') {
     ExpectToken(is, binary, "<AlignmentPdfs>");
     ReadIntegerVector(is, binary, &alignment_pdfs);
   } else {
     alignment_pdfs.clear();
   }
+  if (PeekToken(is, binary) == 'N') {
+      ExpectToken(is, binary, "<NumPost>");
+      numerator_post_targets.Read(is, binary);
+  }
+  if (PeekToken(is, binary) == 'P') {
+      ExpectToken(is, binary, "<PhonePost>");
+      phone_post.Read(is, binary);
+  }
+
   ExpectToken(is, binary, "</Supervision>");
 }
 
@@ -731,7 +746,7 @@ Supervision::Supervision(const Supervision &other):
     frames_per_sequence(other.frames_per_sequence),
     label_dim(other.label_dim), fst(other.fst),
     e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs),
-    numerator_post_targets(other.numerator_post_targets) { }
+    numerator_post_targets(other.numerator_post_targets), phone_post(other.phone_post) { }
 
 Supervision::Supervision(int32 dim, const Posterior& labels):
     weight(1.0), num_sequences(1), frames_per_sequence(labels.size()),label_dim(dim){
@@ -773,6 +788,36 @@ void AppendSupervisionPost(const std::vector<const Supervision*>& input,
     KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
 }
 
+void AppendPhoneSupervisionPost(const std::vector<const Supervision*>& input,
+    Supervision* output_supervision) {
+    KALDI_ASSERT(!input.empty());
+    int32 num_inputs = input.size();
+    KALDI_ASSERT(num_inputs > 1);
+    KALDI_ASSERT(input[0]->phone_post.NumRows() > 0);
+
+    KALDI_ASSERT(output_supervision->num_sequences == num_inputs);
+
+    std::vector<GeneralMatrix const*> output_targets(num_inputs);
+    output_targets[0] = &(input[0]->phone_post);
+
+    for (int32 i = 1; i < num_inputs; i++) {
+        output_targets[i] = &(input[i]->phone_post);
+        KALDI_ASSERT(output_targets[i]->NumRows() > 0);
+        KALDI_ASSERT(output_targets[i]->NumCols() > 0);
+        KALDI_ASSERT(input[i]->frames_per_sequence ==
+            output_supervision->frames_per_sequence);
+    }
+
+    AppendGeneralMatrixRows(
+        output_targets, &(output_supervision->phone_post),
+        true);    // sort by t
+    KALDI_ASSERT(output_supervision->phone_post.NumRows()
+        == output_supervision->frames_per_sequence
+        * output_supervision->num_sequences);
+    KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->phone_post.NumRows());
+}
+
+
 
 // This static function is called by MergeSupervision if the supervisions
 // are end2end. It simply puts all e2e FST's into 1 supervision.
@@ -801,6 +846,15 @@ void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
           << output_supervision->numerator_post_targets.NumRows();
 
       KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
+  }
+
+  if (input[0]->phone_post.NumRows() > 0) {
+      AppendPhoneSupervisionPost(input, output_supervision);
+      KALDI_VLOG(2) << output_supervision->frames_per_sequence << " * "
+          << output_supervision->num_sequences << " == "
+          << output_supervision->phone_post.NumRows();
+
+      KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->phone_post.NumRows());
   }
 }
 
@@ -851,6 +905,15 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
           << output_supervision->numerator_post_targets.NumRows();
 
       KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->numerator_post_targets.NumRows());
+  }
+
+  if (input[0]->phone_post.NumRows() > 0) {
+      AppendPhoneSupervisionPost(input, output_supervision);
+      KALDI_VLOG(2) << output_supervision->frames_per_sequence << " * "
+          << output_supervision->num_sequences << " == "
+          << output_supervision->phone_post.NumRows();
+
+      KALDI_ASSERT(output_supervision->frames_per_sequence * output_supervision->num_sequences == output_supervision->phone_post.NumRows());
   }
 }
 

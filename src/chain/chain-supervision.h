@@ -304,6 +304,8 @@ struct Supervision {
 
   GeneralMatrix numerator_post_targets;
 
+  GeneralMatrix phone_post;
+
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
                  label_dim(-1) { }
 
