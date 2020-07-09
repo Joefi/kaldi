@@ -91,7 +91,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 echo $#;
-if [ $# != 4 ]; then
+if [ $# != 5 ]; then
   echo "Usage: $0 [opts] <data> <chain-dir> <lattice-dir> <egs-dir>"
   echo " e.g.: $0 data/train exp/tri4_nnet exp/tri3_lats exp/tri4_nnet/egs"
   echo ""
@@ -361,6 +361,9 @@ echo $right_context > $dir/info/right_context
 echo $left_context_initial > $dir/info/left_context_initial
 echo $right_context_final > $dir/info/right_context_final
 
+
+num_phones=$(hmm-info $chaindir/0.trans_mdl | grep phones | awk '{print $4}')
+
 if [ $stage -le 2 ]; then
 
   echo "$0: copying data alignments"
@@ -388,22 +391,19 @@ if [ $stage -le 2 ]; then
       lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
       chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
         ark:- ark:- \| \
-      nnet3-chain-get-egs $ivector_opts --srand=$srand \
+      nnet3-chain-get-egs-with-phone-post $ivector_opts --srand=$srand --num-phones=${num_phones} \
          $egs_opts --normalization-fst-scale=$normalization_fst_scale \
          $trans_mdl_opt $chaindir/normalization.fst \
-         "$valid_feats" "ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $dir/ali_special.scp | ali-to-phone $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" \ 
-         ark,s,cs:- "ark:$dir/valid_all.cegs" || exit 1
+         "$valid_feats" ark,s,cs:-  "ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $dir/ali_special.scp | ali-to-phones --per-frame $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" "ark:$dir/valid_all.cegs" || exit 1
     $cmd $dir/log/create_train_subset.log \
       utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
       lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
       chain-get-supervision $chain_supervision_all_opts \
         $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-      nnet3-chain-get-egs $ivector_opts --srand=$srand \
+      nnet3-chain-get-egs-with-phone-post $ivector_opts --srand=$srand --num-phones=${num_phones} \
         $egs_opts --normalization-fst-scale=$normalization_fst_scale \
         $trans_mdl_opt $chaindir/normalization.fst \
-        "$train_subset_feats" \
-        "ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $dir/ali_special.scp | ali-to-phone $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |"
-        ark,s,cs:- "ark:$dir/train_subset_all.cegs" || exit 1
+        "$train_subset_feats" ark,s,cs:- "ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $dir/ali_special.scp | ali-to-phones --per-frame  $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" "ark:$dir/train_subset_all.cegs" || exit 1
     sleep 5  # wait for file system to sync.
     echo "$0: Getting subsets of validation examples for diagnostics and combination."
     if $generate_egs_scp; then
@@ -465,9 +465,10 @@ if [ $stage -le 4 ]; then
       "$lats_rspecifier" ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
+    nnet3-chain-get-egs-with-phone-post $ivector_opts --srand=\$[JOB+$srand] $egs_opts --num-phones=${num_phones} \
       --num-frames-overlap=$frames_overlap_per_eg $trans_mdl_opt \
-     "$feats" "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-phone $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark,s,cs:- ark:- \| \
+     "$feats"  ark,s,cs:- \
+     "ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-phones --per-frame $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
@@ -561,8 +562,8 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  rm $dir/ali.{ark,scp} 2>/dev/null
-  rm $dir/lat_special.*.{ark,scp} 2>/dev/null
+  #rm $dir/ali.{ark,scp} 2>/dev/null
+  #rm $dir/lat_special.*.{ark,scp} 2>/dev/null
 fi
 
 echo "$0: Finished preparing training examples"

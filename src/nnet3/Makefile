@@ -33,7 +33,8 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-convolutional-component.o attention.o \
   nnet-attention-component.o nnet-tdnn-component.o nnet-batch-compute.o \
   nnet-chain-training2.o nnet-chain-diagnostics2.o \
-  nnet-chain-ts-training.o nnet-chain-ts-diagnostics.o nnet-chain-adapt.o
+  nnet-chain-ts-training.o nnet-chain-ts-diagnostics.o nnet-chain-adapt.o \
+  nnet-chain-adapting.o nnet-chain-adapting-diagnostics.o
 
 
 LIBNAME = kaldi-nnet3

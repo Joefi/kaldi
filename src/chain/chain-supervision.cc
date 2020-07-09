@@ -808,9 +808,7 @@ void AppendPhoneSupervisionPost(const std::vector<const Supervision*>& input,
             output_supervision->frames_per_sequence);
     }
 
-    AppendGeneralMatrixRows(
-        output_targets, &(output_supervision->phone_post),
-        true);    // sort by t
+    AppendGeneralMatrixRows(output_targets, &(output_supervision->phone_post));
     KALDI_ASSERT(output_supervision->phone_post.NumRows()
         == output_supervision->frames_per_sequence
         * output_supervision->num_sequences);

@@ -350,6 +350,83 @@ void GetChainComputationRequest(const Nnet &nnet,
     KALDI_ERR << "No outputs in computation request.";
 }
 
+void GetChainComputationRequest(const Nnet &nnet,
+                                const NnetChainExample &eg,
+                                bool need_model_derivative,
+                                bool store_component_stats,
+                                bool use_xent_regularization,
+                                bool use_yent_regularization,
+                                bool use_xent_derivative,
+                                bool use_yent_derivative,
+                                ComputationRequest *request) {
+  request->inputs.clear();
+  request->inputs.reserve(eg.inputs.size());
+  request->outputs.clear();
+  request->outputs.reserve(eg.outputs.size() * 2);
+  request->need_model_derivative = need_model_derivative;
+  request->store_component_stats = store_component_stats;
+  for (size_t i = 0; i < eg.inputs.size(); i++) {
+    const NnetIo &io = eg.inputs[i];
+    const std::string &name = io.name;
+    int32 node_index = nnet.GetNodeIndex(name);
+    if (node_index == -1 ||
+        !nnet.IsInputNode(node_index))
+      KALDI_ERR << "Nnet example has input named '" << name
+                << "', but no such input node is in the network.";
+
+    request->inputs.resize(request->inputs.size() + 1);
+    IoSpecification &io_spec = request->inputs.back();
+    io_spec.name = name;
+    io_spec.indexes = io.indexes;
+    io_spec.has_deriv = false;
+  }
+  for (size_t i = 0; i < eg.outputs.size(); i++) {
+    // there will normally be exactly one output , named "output"
+    const NnetChainSupervision &sup = eg.outputs[i];
+    const std::string &name = sup.name;
+    int32 node_index = nnet.GetNodeIndex(name);
+    if (node_index == -1 &&
+        !nnet.IsOutputNode(node_index))
+      KALDI_ERR << "Nnet example has output named '" << name
+                << "', but no such output node is in the network.";
+    request->outputs.resize(request->outputs.size() + 1);
+    IoSpecification &io_spec = request->outputs.back();
+    io_spec.name = name;
+    io_spec.indexes = sup.indexes;
+    io_spec.has_deriv = need_model_derivative;
+
+    if (use_xent_regularization) {
+      size_t cur_size = request->outputs.size();
+      request->outputs.resize(cur_size + 1);
+      IoSpecification &io_spec = request->outputs[cur_size - 1],
+          &io_spec_xent = request->outputs[cur_size];
+      // the IoSpecification for the -xent output is the same
+      // as for the regular output, except for its name which has
+      // the -xent suffix (and the has_deriv member may differ).
+      io_spec_xent = io_spec;
+      io_spec_xent.name = name + "-xent";
+      io_spec_xent.has_deriv = use_xent_derivative;
+    }
+    if (use_yent_regularization) {
+      size_t cur_size = request->outputs.size();
+      request->outputs.resize(cur_size + 1);
+      IoSpecification &io_spec = request->outputs[cur_size - 1],
+          &io_spec_yent = request->outputs[cur_size];
+      // the IoSpecification for the -xent output is the same
+      // as for the regular output, except for its name which has
+      // the -xent suffix (and the has_deriv member may differ).
+      io_spec_yent = io_spec;
+      io_spec_yent.name = name + "-yent";
+      io_spec_yent.has_deriv = use_yent_derivative;
+    }
+  }
+  // check to see if something went wrong.
+  if (request->inputs.empty())
+    KALDI_ERR << "No inputs in computation request.";
+  if (request->outputs.empty())
+    KALDI_ERR << "No outputs in computation request.";
+}
+
 // Returns the frame subsampling factor, which is the difference between the
 // first 't' value we encounter in 'indexes', and the next 't' value that is
 // different from the first 't'.  It will typically be 3.

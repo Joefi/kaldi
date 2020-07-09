@@ -217,6 +217,16 @@ void GetChainComputationRequest(const Nnet &nnet,
                                 ComputationRequest *computation_request);
 
 
+void GetChainComputationRequest(const Nnet &nnet,
+                                const NnetChainExample &eg,
+                                bool need_model_derivative,
+                                bool store_component_stats,
+                                bool use_xent_regularization,
+                                bool use_yent_regularization,
+                                bool use_xent_derivative,
+                                bool use_yent_derivative,
+                                ComputationRequest *computation_request);
+
 
 typedef TableWriter<KaldiObjectHolder<NnetChainExample > > NnetChainExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetChainExample > > SequentialNnetChainExampleReader;

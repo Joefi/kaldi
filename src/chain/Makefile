@@ -10,7 +10,8 @@ TESTFILES = chain-supervision-test language-model-test chain-supervision-splitte
 OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
           language-model.o chain-denominator.o chain-training.o \
           chain-generic-numerator.o chain-ts-training.o chain-ts-numerator.o chain-ts-denominator.o \
-          chain-supervision-splitter.o
+          chain-supervision-splitter.o chain-adapt-numerator.o chain-adapt-denominator.o \
+          chain-adapting.o
 ifeq ($(CUDA), true)
   OBJFILES += chain-kernels.o
 endif
